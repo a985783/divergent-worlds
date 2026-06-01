@@ -1,0 +1,50 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "divergent-worlds"
+version = "0.1.0"
+description = "A lightweight Streamlit AI parallel-world prediction engine."
+readme = "README.md"
+license = "MIT"
+authors = [{ name = "AI理享派", email = "a985783827@gmail.com" }]
+requires-python = ">=3.11"
+keywords = ["streamlit", "forecasting", "llm", "simulation"]
+dependencies = [
+  "streamlit>=1.32",
+  "openai>=1.20",
+  "httpx[socks]>=0.27",
+  "instructor>=1.0",
+  "pydantic>=2.0",
+  "pdfplumber>=0.11",
+  "python-dotenv>=1.0",
+  "tiktoken>=0.7",
+  "streamlit-echarts>=0.4",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8.0",
+  "pytest-mock>=3.12",
+  "pytest-cov>=5.0",
+  "pytest-timeout>=2.3",
+  "respx>=0.21",
+  "ruff>=0.6",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q --tb=short"
+pythonpath = ["."]
+timeout = 60
+filterwarnings = [
+  "ignore::DeprecationWarning:streamlit.*",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.setuptools]
+packages = ["engine", "pages", "pages.components"]

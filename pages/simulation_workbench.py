@@ -5,6 +5,7 @@ from pathlib import Path
 import streamlit as st
 
 from pages.state_manager import state
+from pages import i18n
 from pages.ui_helpers import inject_app_css, llm_is_ready
 from pages.workbench_state import WorkbenchStage, WorkbenchViewModel, build_workbench_vm
 
@@ -17,12 +18,12 @@ from pages.components.setup import render_new_case_setup
 
 
 WORKBENCH_STEPS = [
-    "1. 材料解析",
-    "2. 初始世界",
-    "3. 平行分支",
-    "4. 运行控制台",
-    "5. 分支比对",
-    "6. 预测报告",
+    "materials",
+    "base_world",
+    "branches",
+    "simulation",
+    "comparison",
+    "report",
 ]
 
 STAGE_TO_INDEX = {
@@ -37,26 +38,40 @@ STAGE_TO_INDEX = {
 }
 
 STAGE_RAIL = [
-    (WorkbenchStage.NO_CASE, "项目"),
-    (WorkbenchStage.DEMO_LOADED, "材料"),
-    (WorkbenchStage.MATERIALS_PARSED, "基线"),
-    (WorkbenchStage.BASE_WORLD_READY, "分支"),
-    (WorkbenchStage.BRANCHES_READY, "推演"),
-    (WorkbenchStage.PARTIAL_SIMULATION, "比对"),
-    (WorkbenchStage.COMPARISON_READY, "报告"),
-    (WorkbenchStage.REPORT_READY, "完成"),
+    (WorkbenchStage.NO_CASE, ("项目", "Project")),
+    (WorkbenchStage.DEMO_LOADED, ("材料", "Materials")),
+    (WorkbenchStage.MATERIALS_PARSED, ("基线", "Baseline")),
+    (WorkbenchStage.BASE_WORLD_READY, ("分支", "Branches")),
+    (WorkbenchStage.BRANCHES_READY, ("推演", "Run")),
+    (WorkbenchStage.PARTIAL_SIMULATION, ("比对", "Compare")),
+    (WorkbenchStage.COMPARISON_READY, ("报告", "Report")),
+    (WorkbenchStage.REPORT_READY, ("完成", "Done")),
 ]
 
-STAGE_LABELS = {
-    WorkbenchStage.NO_CASE: "等待创建项目",
-    WorkbenchStage.DEMO_LOADED: "项目已创建，等待材料解析",
-    WorkbenchStage.MATERIALS_PARSED: "材料已解析，等待构造基线",
-    WorkbenchStage.BASE_WORLD_READY: "基线世界就绪，等待生成分支",
-    WorkbenchStage.BRANCHES_READY: "分支世界就绪，等待推演",
-    WorkbenchStage.PARTIAL_SIMULATION: "推演记录已产生，等待继续或比对",
-    WorkbenchStage.COMPARISON_READY: "分支比对就绪，等待生成报告",
-    WorkbenchStage.REPORT_READY: "报告结果就绪",
-}
+
+def _step_label(step: str) -> str:
+    return {
+        "materials": i18n.ui_text("1. 材料解析", "1. Material Parsing"),
+        "base_world": i18n.ui_text("2. 初始世界", "2. Base World"),
+        "branches": i18n.ui_text("3. 平行分支", "3. Parallel Branches"),
+        "simulation": i18n.ui_text("4. 运行控制台", "4. Run Console"),
+        "comparison": i18n.ui_text("5. 分支比对", "5. Branch Comparison"),
+        "report": i18n.ui_text("6. 预测报告", "6. Forecast Report"),
+    }[step]
+
+
+def _stage_long_label(stage: WorkbenchStage) -> str:
+    labels = {
+        WorkbenchStage.NO_CASE: i18n.ui_text("等待创建项目", "Waiting for project creation"),
+        WorkbenchStage.DEMO_LOADED: i18n.ui_text("项目已创建，等待材料解析", "Project created; waiting for material parsing"),
+        WorkbenchStage.MATERIALS_PARSED: i18n.ui_text("材料已解析，等待构造基线", "Materials parsed; waiting for base world"),
+        WorkbenchStage.BASE_WORLD_READY: i18n.ui_text("基线世界就绪，等待生成分支", "Base world ready; waiting for branches"),
+        WorkbenchStage.BRANCHES_READY: i18n.ui_text("分支世界就绪，等待推演", "Branch worlds ready; waiting for simulation"),
+        WorkbenchStage.PARTIAL_SIMULATION: i18n.ui_text("推演记录已产生，等待继续或比对", "Simulation logs exist; continue or compare"),
+        WorkbenchStage.COMPARISON_READY: i18n.ui_text("分支比对就绪，等待生成报告", "Branch comparison ready; waiting for report"),
+        WorkbenchStage.REPORT_READY: i18n.ui_text("报告结果就绪", "Report ready"),
+    }
+    return labels.get(stage, stage.value)
 
 
 def render() -> None:
@@ -74,23 +89,23 @@ def render() -> None:
 
     st.divider()
 
-    if active_step == "1. 材料解析":
+    if active_step == "materials":
         render_material_ingestion_section(state.case_config)
-    elif active_step == "2. 初始世界":
+    elif active_step == "base_world":
         if not state.material_summary:
-            st.info("请先完成材料解析。")
+            st.info(i18n.ui_text("请先完成材料解析。", "Complete material parsing first."))
         else:
             render_baseworld_section(state.case_config, state.material_summary, vm)
-    elif active_step == "3. 平行分支":
+    elif active_step == "branches":
         if not state.base_world:
-            st.info("请先构造初始世界。")
+            st.info(i18n.ui_text("请先构造初始世界。", "Build the base world first."))
         else:
             render_branches_section(state.case_config, state.base_world, vm)
-    elif active_step == "4. 运行控制台":
+    elif active_step == "simulation":
         render_simulation_console_tab(vm)
-    elif active_step == "5. 分支比对":
+    elif active_step == "comparison":
         render_comparison_tab(vm)
-    elif active_step == "6. 预测报告":
+    elif active_step == "report":
         render_report_tab(vm)
 
     if state.is_auto_pilot and state.case_config:
@@ -99,10 +114,14 @@ def render() -> None:
 
 def _render_empty_flow_intro(vm: WorkbenchViewModel) -> None:
     with st.container(border=True):
-        st.markdown("### 流程推进器")
+        st.markdown(i18n.ui_text("### 流程推进器", "### Flow Driver"))
         st.caption(
-            "先创建或恢复项目。项目进入工作台后，顶部会出现固定的“下一步”按钮，"
-            "把材料解析、基线、分支、推演、比对、报告串起来。"
+            i18n.ui_text(
+                "先创建或恢复项目。项目进入工作台后，顶部会出现固定的“下一步”按钮，"
+                "把材料解析、基线、分支、推演、比对、报告串起来。",
+                "Create or restore a project first. The workbench then connects materials, "
+                "baseline, branches, simulation, comparison, and report into one flow.",
+            )
         )
         _render_compact_stage_rail(vm)
 
@@ -119,22 +138,29 @@ def _render_progress_rail(vm: WorkbenchViewModel) -> None:
     with st.container(border=True):
         top_left, top_right = st.columns([2.2, 1])
         with top_left:
-            st.markdown("### 流程推进器")
-            st.caption(STAGE_LABELS.get(vm.stage, vm.stage.value))
+            st.markdown(i18n.ui_text("### 流程推进器", "### Flow Driver"))
+            st.caption(_stage_long_label(vm.stage))
             _render_compact_stage_rail(vm)
         with top_right:
-            st.caption("当前阶段")
+            st.caption(i18n.ui_text("当前阶段", "Current stage"))
             st.markdown(f"**{_short_stage_label(vm.stage)}**")
-            st.caption("下一步")
+            st.caption(i18n.ui_text("下一步", "Next step"))
             st.markdown(f"**{action_label}**")
 
         progress = _stage_progress(vm.stage)
-        st.progress(progress, text=f"流程进度 {int(progress * 100)}%")
+        st.progress(
+            progress,
+            text=i18n.format_text(
+                "流程进度 {value}%",
+                "Flow progress {value}%",
+                value=int(progress * 100),
+            ),
+        )
 
         if llm_blockers:
-            st.warning("模型调用受阻：" + " ".join(llm_blockers))
+            st.warning(i18n.ui_text("模型调用受阻：", "Model call blocked: ") + " ".join(llm_blockers))
         elif ready:
-            st.caption("模型状态：可用。")
+            st.caption(i18n.ui_text("模型状态：可用。", "Model status: available."))
 
         if blocker:
             st.info(blocker)
@@ -142,16 +168,20 @@ def _render_progress_rail(vm: WorkbenchViewModel) -> None:
         col_auto, col_focus, col_reset = st.columns([1.4, 1, 1])
         with col_auto:
             state.is_auto_pilot = st.toggle(
-                "自动推进",
+                i18n.ui_text("自动推进", "Autopilot"),
                 value=state.is_auto_pilot,
                 key="toggle_auto_pilot",
             )
         with col_focus:
-            if st.button("回到当前阶段", use_container_width=True, key="workbench_focus_current"):
+            if st.button(
+                i18n.ui_text("回到当前阶段", "Focus current stage"),
+                use_container_width=True,
+                key="workbench_focus_current",
+            ):
                 _goto_stage(vm.stage)
                 st.rerun()
         with col_reset:
-            if st.button("重置项目", use_container_width=True, key="workbench_reset_case"):
+            if st.button(i18n.ui_text("重置项目", "Reset project"), use_container_width=True, key="workbench_reset_case"):
                 _reset_current_case()
                 st.rerun()
 
@@ -159,14 +189,15 @@ def _render_progress_rail(vm: WorkbenchViewModel) -> None:
 def _render_compact_stage_rail(vm: WorkbenchViewModel) -> None:
     current = _rail_index(vm.stage)
     cols = st.columns(len(STAGE_RAIL))
-    for index, (_, label) in enumerate(STAGE_RAIL):
+    for index, (_, label_pair) in enumerate(STAGE_RAIL):
         if index < current:
-            status = "完成"
+            status = i18n.ui_text("完成", "Done")
         elif index == current:
-            status = "当前"
+            status = i18n.ui_text("当前", "Current")
         else:
-            status = "待处理"
+            status = i18n.ui_text("待处理", "Pending")
         with cols[index]:
+            label = i18n.ui_text(label_pair[0], label_pair[1])
             st.markdown(f"**{label}**")
             st.caption(status)
 
@@ -187,6 +218,15 @@ def _resolve_active_act(vm: WorkbenchViewModel) -> str:
 
     available = WORKBENCH_STEPS[: current_index + 1]
     selected = st.session_state.get(key)
+    legacy_map = {
+        "1. 材料解析": "materials",
+        "2. 初始世界": "base_world",
+        "3. 平行分支": "branches",
+        "4. 运行控制台": "simulation",
+        "5. 分支比对": "comparison",
+        "6. 预测报告": "report",
+    }
+    selected = legacy_map.get(selected, selected)
     if selected not in available:
         selected = target
         st.session_state[key] = selected
@@ -194,11 +234,27 @@ def _resolve_active_act(vm: WorkbenchViewModel) -> str:
     if len(available) > 1:
         # 当前值已写入 session_state[key]，控件不再传 default/index，避免 Streamlit 双重赋值警告。
         if hasattr(st, "pills"):
-            picked = st.pills("回看流程阶段", options=available, key=key)
+            picked = st.pills(
+                i18n.ui_text("回看流程阶段", "Review completed stages"),
+                options=available,
+                key=key,
+                format_func=_step_label,
+            )
         elif hasattr(st, "segmented_control"):
-            picked = st.segmented_control("回看流程阶段", options=available, key=key)
+            picked = st.segmented_control(
+                i18n.ui_text("回看流程阶段", "Review completed stages"),
+                options=available,
+                key=key,
+                format_func=_step_label,
+            )
         else:
-            picked = st.radio("回看流程阶段", options=available, horizontal=True, key=key)
+            picked = st.radio(
+                i18n.ui_text("回看流程阶段", "Review completed stages"),
+                options=available,
+                horizontal=True,
+                key=key,
+                format_func=_step_label,
+            )
         selected = picked or target
     return selected
 
@@ -223,43 +279,46 @@ def _reset_current_case() -> None:
 
 def _next_step_label(vm: WorkbenchViewModel) -> str:
     if vm.stage is WorkbenchStage.NO_CASE:
-        return "创建或恢复项目"
+        return i18n.ui_text("创建或恢复项目", "Create or restore project")
     if vm.stage is WorkbenchStage.DEMO_LOADED:
-        return "解析材料"
+        return i18n.ui_text("解析材料", "Parse materials")
     if vm.stage is WorkbenchStage.MATERIALS_PARSED:
-        return "构造初始世界"
+        return i18n.ui_text("构造初始世界", "Build base world")
     if vm.stage is WorkbenchStage.BASE_WORLD_READY:
-        return "生成平行分支"
+        return i18n.ui_text("生成平行分支", "Generate parallel branches")
     if vm.stage in (WorkbenchStage.BRANCHES_READY, WorkbenchStage.PARTIAL_SIMULATION):
         if not _simulation_complete():
-            return "运行或继续全部世界线"
-        return "生成分支比对与预测卡"
+            return i18n.ui_text("运行或继续全部世界线", "Run or resume all worldlines")
+        return i18n.ui_text("生成分支比对与预测卡", "Generate comparison and forecast cards")
     if vm.stage is WorkbenchStage.COMPARISON_READY:
         if not state.forecast_cards:
-            return "生成预测卡"
-        return "生成最终报告"
+            return i18n.ui_text("生成预测卡", "Generate forecast cards")
+        return i18n.ui_text("生成最终报告", "Generate final report")
     if vm.stage is WorkbenchStage.REPORT_READY and not state.report:
-        return "生成最终报告"
-    return "查看结果"
+        return i18n.ui_text("生成最终报告", "Generate final report")
+    return i18n.ui_text("查看结果", "Review results")
 
 
 def _structural_blocker(vm: WorkbenchViewModel) -> str | None:
     if vm.stage is WorkbenchStage.DEMO_LOADED and not state.material_summary:
         if not state.demo_material_paths and not state.material_preview:
             _goto_stage(WorkbenchStage.DEMO_LOADED)
-            return "需要先在“材料解析”区域上传文件、填写本地文件夹路径，或粘贴材料。"
+            return i18n.ui_text(
+                "需要先在“材料解析”区域上传文件、填写本地文件夹路径，或粘贴材料。",
+                "Upload files, enter a local folder path, or paste materials in Material Parsing first.",
+            )
     if vm.stage in (WorkbenchStage.BRANCHES_READY, WorkbenchStage.PARTIAL_SIMULATION):
         if not state.branches or not state.base_world:
-            return "需要先生成并确认平行分支。"
+            return i18n.ui_text("需要先生成并确认平行分支。", "Generate and confirm parallel branches first.")
     if vm.stage is WorkbenchStage.REPORT_READY and state.report:
-        return "流程已经完成；可以查看报告或进入预测账本。"
+        return i18n.ui_text("流程已经完成；可以查看报告或进入预测账本。", "The flow is complete; review the report or open the forecast ledger.")
     return None
 
 
 def _advance_one_step(vm: WorkbenchViewModel) -> None:
     stage = vm.stage
     if stage is WorkbenchStage.NO_CASE:
-        raise RuntimeError("请先创建或恢复项目。")
+        raise RuntimeError(i18n.ui_text("请先创建或恢复项目。", "Create or restore a project first."))
     if stage is WorkbenchStage.DEMO_LOADED:
         _parse_materials()
     elif stage is WorkbenchStage.MATERIALS_PARSED:
@@ -296,7 +355,12 @@ def _parse_materials() -> None:
     preview = state.material_preview or []
     raw_texts = [item.get("text", "") for item in preview if item.get("text")]
     if not raw_texts:
-        raise RuntimeError("没有可解析材料。请先上传文件、填写本地文件夹路径，或粘贴材料。")
+        raise RuntimeError(
+            i18n.ui_text(
+                "没有可解析材料。请先上传文件、填写本地文件夹路径，或粘贴材料。",
+                "No parseable materials. Upload files, enter a local folder path, or paste materials first.",
+            )
+        )
 
     from engine.ingest import summarize_materials
 
@@ -333,7 +397,7 @@ def _run_all_simulations() -> None:
 
 def _generate_comparison_and_cards() -> None:
     if not state.branches or not state.simulation_logs:
-        raise RuntimeError("还没有可比对的推演记录。请先运行世界线推演。")
+        raise RuntimeError(i18n.ui_text("还没有可比对的推演记录。请先运行世界线推演。", "No simulation logs to compare yet. Run the worldline simulation first."))
     from engine.divergence_analyzer import analyze_divergence
     from engine.forecast_card import generate_forecast_cards
 
@@ -356,7 +420,7 @@ def _generate_comparison_and_cards() -> None:
 
 def _generate_report() -> None:
     if not state.divergence:
-        raise RuntimeError("请先完成分支比对。")
+        raise RuntimeError(i18n.ui_text("请先完成分支比对。", "Complete branch comparison first."))
     from engine.report_generator import generate_report, generate_report_json
 
     report_md = generate_report(
@@ -429,14 +493,14 @@ def _rail_index(stage: WorkbenchStage) -> int:
 
 def _short_stage_label(stage: WorkbenchStage) -> str:
     return {
-        WorkbenchStage.NO_CASE: "未创建",
-        WorkbenchStage.DEMO_LOADED: "材料",
-        WorkbenchStage.MATERIALS_PARSED: "基线",
-        WorkbenchStage.BASE_WORLD_READY: "分支",
-        WorkbenchStage.BRANCHES_READY: "推演",
-        WorkbenchStage.PARTIAL_SIMULATION: "比对",
-        WorkbenchStage.COMPARISON_READY: "报告",
-        WorkbenchStage.REPORT_READY: "完成",
+        WorkbenchStage.NO_CASE: i18n.ui_text("未创建", "Not started"),
+        WorkbenchStage.DEMO_LOADED: i18n.ui_text("材料", "Materials"),
+        WorkbenchStage.MATERIALS_PARSED: i18n.ui_text("基线", "Baseline"),
+        WorkbenchStage.BASE_WORLD_READY: i18n.ui_text("分支", "Branches"),
+        WorkbenchStage.BRANCHES_READY: i18n.ui_text("推演", "Run"),
+        WorkbenchStage.PARTIAL_SIMULATION: i18n.ui_text("比对", "Compare"),
+        WorkbenchStage.COMPARISON_READY: i18n.ui_text("报告", "Report"),
+        WorkbenchStage.REPORT_READY: i18n.ui_text("完成", "Done"),
     }.get(stage, stage.value)
 
 
@@ -446,13 +510,13 @@ def _run_auto_pilot(vm: WorkbenchViewModel) -> None:
 
     blocker = _structural_blocker(vm)
     if blocker:
-        st.warning("自动推进已暂停：" + blocker)
+        st.warning(i18n.ui_text("自动推进已暂停：", "Autopilot paused: ") + blocker)
         state.is_auto_pilot = False
         return
 
     ready, blockers = llm_is_ready(state.llm_client)
     if not ready:
-        st.warning("自动推进已暂停：模型调用受阻。" + " ".join(blockers))
+        st.warning(i18n.ui_text("自动推进已暂停：模型调用受阻。", "Autopilot paused: model call blocked. ") + " ".join(blockers))
         state.is_auto_pilot = False
         return
 
@@ -465,26 +529,31 @@ def _run_auto_pilot(vm: WorkbenchViewModel) -> None:
     # 推演阶段特殊处理：直接渲染可视化进度，不用 spinner 阻塞
     is_sim_stage = vm.stage in (WorkbenchStage.BRANCHES_READY, WorkbenchStage.PARTIAL_SIMULATION)
     if is_sim_stage and not _simulation_complete():
-        st.markdown("#### ⚙️ 自动推进：世界线推演")
+        st.markdown(i18n.ui_text("#### ⚙️ 自动推进：世界线推演", "#### ⚙️ Autopilot: Worldline Simulation"))
         try:
             _run_all_simulations()
         except Exception as exc:
-            st.error(f"自动推进失败（推演）：{exc}")
+            st.error(i18n.format_text("自动推进失败（推演）：{exc}", "Autopilot failed during simulation: {exc}", exc=exc))
             state.is_auto_pilot = False
             return
     else:
         # 其他阶段用 spinner 包裹（这些操作通常很快）
         try:
-            with st.spinner("自动推进：" + _next_step_label(vm)):
+            with st.spinner(i18n.ui_text("自动推进：", "Autopilot: ") + _next_step_label(vm)):
                 _advance_one_step(vm)
         except Exception as exc:
-            st.error(f"自动推进失败：{exc}")
+            st.error(i18n.format_text("自动推进失败：{exc}", "Autopilot failed: {exc}", exc=exc))
             state.is_auto_pilot = False
             return
 
     after = _state_progress_signature()
     if after == before:
-        st.warning("自动推进没有产生新进度，已暂停。请检查当前阶段输入。")
+        st.warning(
+            i18n.ui_text(
+                "自动推进没有产生新进度，已暂停。请检查当前阶段输入。",
+                "Autopilot produced no new progress and has paused. Check the current stage input.",
+            )
+        )
         state.is_auto_pilot = False
         return
 

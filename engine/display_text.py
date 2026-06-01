@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from typing import Any
 
+from engine.language import is_english
+
 
 LABELS = {
     "xianyu_daily_sales": "闲鱼日销售额",
@@ -73,8 +75,31 @@ VALUE_LABELS = {
     "low": "低",
 }
 
+VALUE_LABELS_EN = {
+    "stable": "stable",
+    "fixed": "fixed",
+    "unknown": "unknown",
+    "uncertain": "uncertain",
+    "negative": "negative",
+    "positive": "positive",
+    "increasing": "increasing",
+    "declining": "declining",
+    "medium": "medium",
+    "high": "high",
+    "low": "low",
+}
+
+
+def _humanize_key(key: str) -> str:
+    return key.replace("_", " ").strip().title()
+
 
 def display_label(key: str) -> str:
+    if is_english():
+        for prefix in ("sensitivity_to_", "sensitivity_"):
+            if key.startswith(prefix):
+                return "Sensitivity To " + display_label(key.removeprefix(prefix))
+        return _humanize_key(key)
     if key in LABELS:
         return LABELS[key]
     for prefix in ("sensitivity_to_", "sensitivity_"):
@@ -85,12 +110,17 @@ def display_label(key: str) -> str:
 
 def display_value(value: Any) -> Any:
     if isinstance(value, dict):
-        return "；".join(
-            f"{display_label(str(key))}：{display_value(child)}"
+        separator = "; " if is_english() else "；"
+        colon = ": " if is_english() else "："
+        return separator.join(
+            f"{display_label(str(key))}{colon}{display_value(child)}"
             for key, child in value.items()
         )
     if isinstance(value, list):
-        return "、".join(str(display_value(item)) for item in value)
+        separator = ", " if is_english() else "、"
+        return separator.join(str(display_value(item)) for item in value)
     if isinstance(value, str):
+        if is_english():
+            return VALUE_LABELS_EN.get(value, value)
         return VALUE_LABELS.get(value, value)
     return value

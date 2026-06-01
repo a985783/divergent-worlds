@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import Any
 
+from engine.language import json_output_instruction
 from engine.schemas import (
     BranchWorld,
     CaseConfig,
@@ -54,7 +55,7 @@ def generate_forecast_cards(
         [
             {
                 "role": "system",
-                "content": "只返回合法 ForecastCardCollection JSON；所有面向用户的字符串字段使用简体中文。",
+                "content": json_output_instruction("ForecastCardCollection"),
             },
             {"role": "user", "content": prompt},
         ],

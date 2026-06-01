@@ -3,6 +3,7 @@ from pathlib import Path
 from zipfile import BadZipFile, ZipFile
 
 import streamlit as st
+from pages import i18n
 from pages.state_manager import state
 from engine.schemas import CaseConfig
 from engine.utils import ensure_case_dir, get_case_path, save_json
@@ -18,6 +19,17 @@ SCENARIOS = {
 }
 
 HORIZONS = {"7 天": "7d", "30 天": "30d", "3 个月": "3m", "1 年": "1y"}
+
+SCENARIOS_EN = {
+    "Ecommerce / Platform Ops": "ecommerce",
+    "Policy / Macro": "policy",
+    "Open-source Trend": "open_source",
+    "Public Opinion / Brand": "public_opinion",
+    "Creative / Worldbuilding": "creative",
+    "Custom": "custom",
+}
+
+HORIZONS_EN = {"7 days": "7d", "30 days": "30d", "3 months": "3m", "1 year": "1y"}
 
 SCENARIO_TEMPLATES: dict[str, dict[str, str]] = {
     "ecommerce": {
@@ -42,6 +54,59 @@ SCENARIO_TEMPLATES: dict[str, dict[str, str]] = {
     },
     "custom": {"question": "", "branches": ""},
 }
+
+SCENARIO_TEMPLATES_EN: dict[str, dict[str, str]] = {
+    "ecommerce": {
+        "question": "Recent platform revenue has become volatile. Is it caused by algorithm changes, demand shifts, or competitor pressure?",
+        "branches": "Algorithm adjustment\nDemand decline\nCompetitor pressure\nSupply-side change\nPolicy intervention",
+    },
+    "policy": {
+        "question": "If a policy is not implemented, implemented earlier, or delayed, how will the key indicators change?",
+        "branches": "Current policy path\nNo-policy counterfactual\nEarly implementation\nDelayed implementation\nAlternative policy",
+    },
+    "open_source": {
+        "question": "Is this open-source project's growth a short-term spike or long-term adoption? How could it evolve?",
+        "branches": "Short-term hype fades\nDeep technical adoption\nCommercialization wave\nMaintainer fatigue\nEcosystem expansion",
+    },
+    "public_opinion": {
+        "question": "How will this public-opinion event evolve, and what will it do to brand reputation?",
+        "branches": "Quickly settles\nContinues to escalate\nSecond wave ignition\nBrand reset\nCompetitor amplification",
+    },
+    "creative": {
+        "question": "Given this world setting, how could different factions or characters diverge over time?",
+        "branches": "Faction A rises\nFaction B declines\nAlliance forms\nTechnology breakthrough\nExternal shock",
+    },
+    "custom": {"question": "", "branches": ""},
+}
+
+
+def scenario_options() -> dict[str, str]:
+    return SCENARIOS_EN if i18n.is_english() else SCENARIOS
+
+
+def horizon_options() -> dict[str, str]:
+    return HORIZONS_EN if i18n.is_english() else HORIZONS
+
+
+def scenario_label_for_value(value: str) -> str:
+    options = scenario_options()
+    for label, candidate in options.items():
+        if candidate == value:
+            return label
+    return next(iter(options))
+
+
+def horizon_label_for_value(value: str) -> str:
+    options = horizon_options()
+    for label, candidate in options.items():
+        if candidate == value:
+            return label
+    return next(iter(options))
+
+
+def scenario_template(value: str) -> dict[str, str]:
+    templates = SCENARIO_TEMPLATES_EN if i18n.is_english() else SCENARIO_TEMPLATES
+    return templates.get(value, templates["custom"])
 
 SUPPORTED_EXTENSIONS = {"txt", "md", "markdown", "csv", "pdf", "json"}
 MAX_CONTEXT_FILES = 80
@@ -81,7 +146,7 @@ def _load_material_preview(paths: list[Path]) -> list[dict[str, str]]:
                 with path.open("r", encoding="utf-8-sig", newline="") as h:
                     state.csv_data_rows = list(csv.DictReader(h))
             except Exception as e:
-                st.warning(f"CSV 读取失败: {e}")
+                st.warning(i18n.format_text("CSV 读取失败: {error}", "CSV read failed: {error}", error=e))
     return preview
 
 def _collect_materials(uploads: list[object] | None, pasted_text: str, folder_path: str, case_id: str) -> list[dict[str, str]]:
@@ -106,21 +171,21 @@ def _collect_materials(uploads: list[object] | None, pasted_text: str, folder_pa
                     with target.open("r", encoding="utf-8-sig", newline="") as h:
                         state.csv_data_rows = list(csv.DictReader(h))
                 except Exception as e:
-                    st.warning(f"CSV 读取失败: {e}")
+                    st.warning(i18n.format_text("CSV 读取失败: {error}", "CSV read failed: {error}", error=e))
         else:
-            st.warning(f"跳过不支持的文件: {name}")
+            st.warning(i18n.format_text("跳过不支持的文件: {name}", "Skipped unsupported file: {name}", name=name))
 
     if folder_path.strip():
         materials.extend(_collect_folder_materials(Path(folder_path).expanduser()))
 
     if pasted_text.strip():
-        materials.append({"name": "粘贴材料", "text": _cap_text(pasted_text.strip())})
+        materials.append({"name": i18n.ui_text("粘贴材料", "Pasted material"), "text": _cap_text(pasted_text.strip())})
 
     return _cap_material_set(materials)
 
 def _collect_folder_materials(root: Path) -> list[dict[str, str]]:
     if not root.exists():
-        raise FileNotFoundError(f"路径不存在: {root}")
+        raise FileNotFoundError(i18n.format_text("路径不存在: {root}", "Path does not exist: {root}", root=root))
     materials: list[dict[str, str]] = []
     for path in sorted(root.rglob("*")):
         if len(materials) >= MAX_CONTEXT_FILES:
@@ -134,7 +199,7 @@ def _collect_folder_materials(root: Path) -> list[dict[str, str]]:
                 with path.open("r", encoding="utf-8-sig", newline="") as h:
                     state.csv_data_rows = list(csv.DictReader(h))
             except Exception as e:
-                st.warning(f"CSV 读取失败: {e}")
+                st.warning(i18n.format_text("CSV 读取失败: {error}", "CSV read failed: {error}", error=e))
     return materials
 
 def _safe_zip_member_name(name: str) -> Path | None:
@@ -151,7 +216,7 @@ def _collect_zip_materials(upload: object, case_dir: Path) -> list[dict[str, str
     try:
         archive = ZipFile(BytesIO(upload.getvalue()))
     except BadZipFile as exc:
-        raise ValueError("ZIP 文件无法读取") from exc
+        raise ValueError(i18n.ui_text("ZIP 文件无法读取", "ZIP file cannot be read")) from exc
 
     materials: list[dict[str, str]] = []
     with archive:
@@ -174,11 +239,11 @@ def _collect_zip_materials(upload: object, case_dir: Path) -> list[dict[str, str
                     with target.open("r", encoding="utf-8-sig", newline="") as h:
                         state.csv_data_rows = list(csv.DictReader(h))
                 except Exception as e:
-                    st.warning(f"CSV 读取失败: {e}")
+                    st.warning(i18n.format_text("CSV 读取失败: {error}", "CSV read failed: {error}", error=e))
     return materials
 
 def _cap_text(text: str) -> str:
-    return text[:MAX_FILE_CHARS] + "\n\n[截断]" if len(text) > MAX_FILE_CHARS else text
+    return text[:MAX_FILE_CHARS] + i18n.ui_text("\n\n[截断]", "\n\n[truncated]") if len(text) > MAX_FILE_CHARS else text
 
 def _cap_material_set(materials: list[dict[str, str]]) -> list[dict[str, str]]:
     capped: list[dict[str, str]] = []
@@ -191,4 +256,3 @@ def _cap_material_set(materials: list[dict[str, str]]) -> list[dict[str, str]]:
         capped.append({"name": item["name"], "text": text})
         total += len(text)
     return capped
-

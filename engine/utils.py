@@ -106,13 +106,19 @@ def validate_structured_output(
 
 
 def load_prompt(name: str) -> str:
-    prompt_path = Path(__file__).resolve().parents[1] / "prompts" / name
+    from engine.language import is_english
+
+    prompt_root = Path(__file__).resolve().parents[1] / "prompts"
+    localized_path = prompt_root / "en" / name
+    prompt_path = localized_path if is_english() and localized_path.exists() else prompt_root / name
     if not prompt_path.exists():
         raise FileNotFoundError(f"Prompt template not found: {prompt_path}")
     return prompt_path.read_text(encoding="utf-8")
 
 
 def render_prompt(template: str, **values: Any) -> str:
+    from engine.language import user_prompt_preamble
+
     rendered = template
     for key, value in values.items():
         if isinstance(value, BaseModel):
@@ -122,4 +128,4 @@ def render_prompt(template: str, **values: Any) -> str:
         else:
             replacement = str(value)
         rendered = rendered.replace("{" + key + "}", replacement)
-    return rendered
+    return user_prompt_preamble() + "\n\n" + rendered

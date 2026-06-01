@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import Any
 
+from engine.language import json_output_instruction
 from engine.schemas import BaseWorld, CaseConfig, MaterialSummary
 from engine.utils import (
     get_case_path,
@@ -25,7 +26,7 @@ def build_base_world(
             [
                 {
                     "role": "system",
-                    "content": "只返回一个合法 BaseWorld JSON 对象；所有面向用户的字符串字段使用简体中文。",
+                    "content": json_output_instruction("BaseWorld"),
                 },
                 {"role": "user", "content": prompt},
             ],

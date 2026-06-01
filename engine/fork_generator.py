@@ -3,6 +3,7 @@ from __future__ import annotations
 from collections import Counter
 from typing import Any
 
+from engine.language import json_output_instruction
 from engine.schemas import BaseWorld, BranchWorld, BranchWorldCollection, CaseConfig
 from engine.utils import (
     get_case_path,
@@ -41,7 +42,7 @@ def generate_branches(
         [
             {
                 "role": "system",
-                "content": "只返回合法 BranchWorldCollection JSON；所有面向用户的字符串字段使用简体中文。",
+                "content": json_output_instruction("BranchWorldCollection"),
             },
             {"role": "user", "content": prompt},
         ],

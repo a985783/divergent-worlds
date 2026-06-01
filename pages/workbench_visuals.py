@@ -5,6 +5,7 @@ from typing import Any
 
 import streamlit as st
 
+from pages import i18n
 from pages.workbench_state import (
     AgentView,
     BranchView,
@@ -16,37 +17,37 @@ from pages.workbench_state import (
 
 
 _STAGE_LABELS = {
-    WorkbenchStage.NO_CASE: "等待创建",
-    WorkbenchStage.DEMO_LOADED: "项目已创建",
-    WorkbenchStage.MATERIALS_PARSED: "材料已解析",
-    WorkbenchStage.BASE_WORLD_READY: "初始世界就绪",
-    WorkbenchStage.BRANCHES_READY: "分支世界就绪",
-    WorkbenchStage.PARTIAL_SIMULATION: "推演进行中",
-    WorkbenchStage.COMPARISON_READY: "世界比较就绪",
-    WorkbenchStage.REPORT_READY: "预测报告就绪",
+    WorkbenchStage.NO_CASE: ("等待创建", "Waiting"),
+    WorkbenchStage.DEMO_LOADED: ("项目已创建", "Project Created"),
+    WorkbenchStage.MATERIALS_PARSED: ("材料已解析", "Materials Parsed"),
+    WorkbenchStage.BASE_WORLD_READY: ("初始世界就绪", "Base World Ready"),
+    WorkbenchStage.BRANCHES_READY: ("分支世界就绪", "Branches Ready"),
+    WorkbenchStage.PARTIAL_SIMULATION: ("推演进行中", "Simulation Running"),
+    WorkbenchStage.COMPARISON_READY: ("世界比较就绪", "Comparison Ready"),
+    WorkbenchStage.REPORT_READY: ("预测报告就绪", "Forecast Ready"),
 }
 
 _ACTION_LABELS = {
-    "Create or load a case": "创建或恢复项目",
-    "Parse materials": "解析材料",
-    "Build base world": "构造初始世界",
-    "Generate branch worlds": "生成分支世界",
-    "Run branch simulation": "运行分支推演",
-    "Resume branch simulation": "继续分支推演",
-    "Compare branch outcomes": "比较分支结果",
-    "Generate report": "生成预测报告",
-    "Review report": "查看预测报告",
+    "Create or load a case": ("创建或恢复项目", "Create or load a case"),
+    "Parse materials": ("解析材料", "Parse materials"),
+    "Build base world": ("构造初始世界", "Build base world"),
+    "Generate branch worlds": ("生成分支世界", "Generate branch worlds"),
+    "Run branch simulation": ("运行分支推演", "Run branch simulation"),
+    "Resume branch simulation": ("继续分支推演", "Resume branch simulation"),
+    "Compare branch outcomes": ("比较分支结果", "Compare branch outcomes"),
+    "Generate report": ("生成预测报告", "Generate report"),
+    "Review report": ("查看预测报告", "Review report"),
 }
 
 _STAGE_RAIL = (
-    (WorkbenchStage.NO_CASE, "项目"),
-    (WorkbenchStage.DEMO_LOADED, "材料"),
-    (WorkbenchStage.MATERIALS_PARSED, "基线"),
-    (WorkbenchStage.BASE_WORLD_READY, "分支"),
-    (WorkbenchStage.BRANCHES_READY, "推演"),
-    (WorkbenchStage.PARTIAL_SIMULATION, "比对"),
-    (WorkbenchStage.COMPARISON_READY, "报告"),
-    (WorkbenchStage.REPORT_READY, "归档"),
+    (WorkbenchStage.NO_CASE, ("项目", "Project")),
+    (WorkbenchStage.DEMO_LOADED, ("材料", "Materials")),
+    (WorkbenchStage.MATERIALS_PARSED, ("基线", "Baseline")),
+    (WorkbenchStage.BASE_WORLD_READY, ("分支", "Branches")),
+    (WorkbenchStage.BRANCHES_READY, ("推演", "Run")),
+    (WorkbenchStage.PARTIAL_SIMULATION, ("比对", "Compare")),
+    (WorkbenchStage.COMPARISON_READY, ("报告", "Report")),
+    (WorkbenchStage.REPORT_READY, ("归档", "Archive")),
 )
 
 
@@ -62,12 +63,16 @@ def render_cockpit_shell(
     title, question, horizon = _case_header(vm)
     stage_label = _stage_label(vm)
     primary_action = _action_label(next_primary_action(vm))
-    saved_label = f"{saved_project_count} 个本机项目" if saved_project_count else "暂无保存项目"
+    saved_label = (
+        i18n.format_text("{count} 个本机项目", "{count} local projects", count=saved_project_count)
+        if saved_project_count
+        else i18n.ui_text("暂无保存项目", "No saved projects")
+    )
 
     with st.container(border=True):
         col1, col2 = st.columns([2.5, 1])
         with col1:
-            st.caption("世界线驾驶舱")
+            st.caption(i18n.ui_text("世界线驾驶舱", "Worldline Cockpit"))
             st.subheader(title)
             st.write(question)
         with col2:
@@ -78,10 +83,10 @@ def render_cockpit_shell(
                 st.button(latest_record_label, disabled=True, use_container_width=True, key="btn_latest")
 
         m1, m2, m3, m4 = st.columns(4)
-        m1.metric("平行分支", len(vm.branches))
-        m2.metric("智能体", len(vm.agents))
-        m3.metric("时间事件", len(vm.timeline))
-        m4.metric("预测窗口", horizon)
+        m1.metric(i18n.ui_text("平行分支", "Branches"), len(vm.branches))
+        m2.metric(i18n.ui_text("智能体", "Agents"), len(vm.agents))
+        m3.metric(i18n.ui_text("时间事件", "Events"), len(vm.timeline))
+        m4.metric(i18n.ui_text("预测窗口", "Horizon"), horizon)
 
     if not show_detail_panels:
         return
@@ -102,12 +107,12 @@ def render_stage_rail(vm: WorkbenchViewModel) -> None:
     with st.container(border=True):
         col_title, col_action = st.columns([1, 1])
         with col_title:
-            st.markdown("**推演阶段**")
+            st.markdown(i18n.ui_text("**推演阶段**", "**Simulation Stages**"))
         with col_action:
             st.markdown(f"*{_action_label(next_primary_action(vm))}*")
 
         cols = st.columns(8)
-        for index, (stage, label) in enumerate(_STAGE_RAIL):
+        for index, (stage, label_pair) in enumerate(_STAGE_RAIL):
             if index < current_index:
                 state = "✅"
             elif index == current_index:
@@ -115,8 +120,9 @@ def render_stage_rail(vm: WorkbenchViewModel) -> None:
             else:
                 state = "⏳"
             with cols[index]:
+                label = i18n.ui_text(label_pair[0], label_pair[1])
                 st.markdown(f"{state} **{label}**")
-                st.caption(_STAGE_LABELS.get(stage, stage.value))
+                st.caption(_stage_label_for(stage))
 
 
 def render_world_map(vm: WorkbenchViewModel) -> None:
@@ -128,11 +134,16 @@ def render_world_map(vm: WorkbenchViewModel) -> None:
     display_branches = branches[:limit]
     
     with st.container(border=True):
-        st.markdown("**T0 现实基线 → 平行未来分支**")
+        st.markdown(i18n.ui_text("**T0 现实基线 → 平行未来分支**", "**T0 Reality Baseline → Parallel Future Branches**"))
         st.caption(_base_summary(vm))
         
         if not display_branches:
-            st.info("分支等待生成：创建项目并构造初始世界后，这里会展开多条未来路径。")
+            st.info(
+                i18n.ui_text(
+                    "分支等待生成：创建项目并构造初始世界后，这里会展开多条未来路径。",
+                    "Branches are waiting: create a project and build the base world to unfold future paths here.",
+                )
+            )
             return
             
         try:
@@ -149,7 +160,11 @@ def render_world_map(vm: WorkbenchViewModel) -> None:
             
             if len(branches) > limit:
                 children.append({
-                    "name": f"+{len(branches) - limit} 条分支",
+                    "name": i18n.format_text(
+                        "+{count} 条分支",
+                        "+{count} branches",
+                        count=len(branches) - limit,
+                    ),
                     "itemStyle": {"color": "#94a3b8"}
                 })
             
@@ -197,16 +212,16 @@ def render_world_map(vm: WorkbenchViewModel) -> None:
             for b in display_branches:
                 st.markdown(f"- **{b.branch_name}** ({_percent(b.initial_probability)})")
             if len(branches) > limit:
-                st.caption(f"+{len(branches) - limit} 条分支未显示")
+                st.caption(i18n.format_text("+{count} 条分支未显示", "+{count} branches hidden", count=len(branches) - limit))
 
 
 def render_branch_lanes(branches: Sequence[BranchView], *, limit: int = 4) -> None:
     """Render branch lanes using native Streamlit components."""
 
     with st.container(border=True):
-        st.markdown("**世界线轨道**")
+        st.markdown(i18n.ui_text("**世界线轨道**", "**Worldline Lanes**"))
         if not branches:
-            st.info("暂无分支。先创建项目，再生成平行世界。")
+            st.info(i18n.ui_text("暂无分支。先创建项目，再生成平行世界。", "No branches yet. Create a project, then generate parallel worlds."))
         else:
             for branch in branches[:limit]:
                 with st.container(border=True):
@@ -218,49 +233,62 @@ def render_branch_lanes(branches: Sequence[BranchView], *, limit: int = 4) -> No
                         
                     st.progress(max(0.0, min(1.0, branch.initial_probability)))
                     
-                    summary = branch.latest_state_summary or branch.core_assumption or "等待推演更新"
+                    summary = branch.latest_state_summary or branch.core_assumption or i18n.ui_text("等待推演更新", "Waiting for simulation updates")
                     st.write(_shorten(summary, 110))
                     
                     variables = _mapping_preview(branch.changed_variables, limit=2)
-                    st.caption(f"{branch.simulation_step_count} 步推演 · {variables or '变量待定'}")
+                    st.caption(
+                        i18n.format_text(
+                            "{count} 步推演 · {variables}",
+                            "{count} simulation steps · {variables}",
+                            count=branch.simulation_step_count,
+                            variables=variables or i18n.ui_text("变量待定", "variables pending"),
+                        )
+                    )
             
             if len(branches) > limit:
-                st.caption(f"另有 {len(branches) - limit} 条分支，进入工作台查看完整分支集合。")
+                st.caption(
+                    i18n.format_text(
+                        "另有 {count} 条分支，进入工作台查看完整分支集合。",
+                        "{count} more branches are available in the full workbench.",
+                        count=len(branches) - limit,
+                    )
+                )
 
 
 def render_agent_cards(agents: Sequence[AgentView], *, limit: int = 4) -> None:
     """Render active agent cards from view-model agent summaries."""
 
     with st.container(border=True):
-        st.markdown("**智能体阵列**")
+        st.markdown(i18n.ui_text("**智能体阵列**", "**Agent Array**"))
         if not agents:
-            st.info("智能体待生成：运行分支推演前，行动者和立场会显示在这里。")
+            st.info(i18n.ui_text("智能体待生成：运行分支推演前，行动者和立场会显示在这里。", "Agents are pending: actors and positions appear here before branch simulation runs."))
         else:
             for agent in agents[:limit]:
                 with st.container(border=True):
                     st.markdown(f"**{agent.name}** · *{agent.branch_name}*")
-                    goal = agent.goals[0] if agent.goals else "目标待生成"
+                    goal = agent.goals[0] if agent.goals else i18n.ui_text("目标待生成", "Goal pending")
                     st.write(agent.role or goal)
-                    latest = agent.latest_action or agent.latest_belief or "等待下一步行动"
+                    latest = agent.latest_action or agent.latest_belief or i18n.ui_text("等待下一步行动", "Waiting for next action")
                     st.caption(_shorten(latest, 92))
             
             if len(agents) > limit:
-                st.caption(f"+{len(agents) - limit} 更多智能体在工作台内展开。")
+                st.caption(i18n.format_text("+{count} 更多智能体在工作台内展开。", "+{count} more agents expand inside the workbench.", count=len(agents) - limit))
 
 
 def render_event_feed(events: Sequence[TimelineEvent], *, limit: int = 5) -> None:
     """Render recent timeline events."""
 
     with st.container(border=True):
-        st.markdown("**事件流**")
+        st.markdown(i18n.ui_text("**事件流**", "**Event Feed**"))
         recent = tuple(reversed(tuple(events)[-limit:]))
         if not recent:
-            st.info("暂无事件流：分支完成至少一步推演后，这里会显示最新状态变化。")
+            st.info(i18n.ui_text("暂无事件流：分支完成至少一步推演后，这里会显示最新状态变化。", "No events yet: after at least one branch step, recent state changes appear here."))
         else:
             for event in recent:
                 with st.container(border=True):
                     st.markdown(f"**{event.time_label or 'T+'}** · *{event.branch_name}*")
-                    detail = event.state_summary or "; ".join(event.agent_actions) or "状态更新"
+                    detail = event.state_summary or "; ".join(event.agent_actions) or i18n.ui_text("状态更新", "State update")
                     st.write(_shorten(detail, 110))
                     note = event.divergence_notes[0] if event.divergence_notes else event.branch_name
                     st.caption(_shorten(note, 88))
@@ -271,7 +299,7 @@ def render_event_timeline(events: Sequence[TimelineEvent], *, max_steps: int = 1
 
     ordered = tuple(events)[-max_steps:]
     if not ordered:
-        st.info("舞台待启幕：点击「一键运行所有分支」后，智能体会在这里按时间步逐条登场。")
+        st.info(i18n.ui_text("舞台待启幕：点击「一键运行所有分支」后，智能体会在这里按时间步逐条登场。", "The stage is waiting: after running all branches, agents will appear here step by step."))
         return
 
     for position, event in enumerate(ordered, start=1):
@@ -280,18 +308,18 @@ def render_event_timeline(events: Sequence[TimelineEvent], *, max_steps: int = 1
             with head_left:
                 st.markdown(f"**{position}. {event.time_label or 'T+'}** · *{event.branch_name}*")
             with head_right:
-                st.caption(f"第 {position} 步")
-            summary = event.state_summary or "状态更新"
+                st.caption(i18n.format_text("第 {position} 步", "Step {position}", position=position))
+            summary = event.state_summary or i18n.ui_text("状态更新", "State update")
             st.write(_shorten(summary, 160))
 
             actions = list(event.agent_actions)
             if actions:
-                st.caption("智能体动作")
+                st.caption(i18n.ui_text("智能体动作", "Agent actions"))
                 for action in actions[:5]:
                     st.markdown(f"- {_shorten(_stringify(action), 120)}")
             signals = list(event.new_signals[:2]) + list(event.divergence_notes[:1])
             if signals:
-                st.caption("信号 / 分歧：" + " · ".join(_shorten(_stringify(s), 60) for s in signals))
+                st.caption(i18n.ui_text("信号 / 分歧：", "Signals / divergence: ") + " · ".join(_shorten(_stringify(s), 60) for s in signals))
 
 
 def render_side_panel(vm: WorkbenchViewModel) -> None:
@@ -302,16 +330,16 @@ def render_side_panel(vm: WorkbenchViewModel) -> None:
     signals = _top_signals(vm)
 
     with st.container(border=True):
-        st.markdown("**任务状态**")
+        st.markdown(i18n.ui_text("**任务状态**", "**Task Status**"))
         
         col1, col2 = st.columns(2)
         with col1:
-            st.caption("当前阶段")
+            st.caption(i18n.ui_text("当前阶段", "Current stage"))
             st.markdown(f"**{stage_label}**")
-            st.caption("证据密度")
+            st.caption(i18n.ui_text("证据密度", "Evidence density"))
             st.markdown(f"**{_evidence_density(vm)}**")
         with col2:
-            st.caption("下一动作")
+            st.caption(i18n.ui_text("下一动作", "Next action"))
             st.markdown(f"**{primary_action}**")
             
         st.divider()
@@ -324,14 +352,17 @@ def _case_header(vm: WorkbenchViewModel) -> tuple[str, str, str]:
     case_config = vm.case_config
     if not case_config:
         return (
-            "平行世界推演台",
-            "从一个真实问题出发，构造现实基线、平行分支、智能体行动和可校准预测。",
-            "未设定",
+            i18n.ui_text("平行世界推演台", "Divergent Worlds"),
+            i18n.ui_text(
+                "从一个真实问题出发，构造现实基线、平行分支、智能体行动和可校准预测。",
+                "Start from a real question, build a reality baseline, parallel branches, agent actions, and calibratable forecasts.",
+            ),
+            i18n.ui_text("未设定", "Unset"),
         )
     return (
-        str(_field(case_config, "case_name", "未命名项目")),
-        str(_field(case_config, "question", "暂无核心问题")),
-        str(_field(case_config, "horizon", "未设定")),
+        str(_field(case_config, "case_name", i18n.ui_text("未命名项目", "Untitled project"))),
+        str(_field(case_config, "question", i18n.ui_text("暂无核心问题", "No core question yet"))),
+        str(_field(case_config, "horizon", i18n.ui_text("未设定", "Unset"))),
     )
 
 
@@ -345,10 +376,10 @@ def _base_summary(vm: WorkbenchViewModel) -> str:
         if preview:
             return preview
     if vm.material_summary:
-        return "材料已解析，等待构造现实基线。"
+        return i18n.ui_text("材料已解析，等待构造现实基线。", "Materials parsed; waiting to build the reality baseline.")
     if vm.case_config:
-        return "项目已创建，等待材料进入。"
-    return "还没有活动项目。创建或恢复项目后，世界线会在这里展开。"
+        return i18n.ui_text("项目已创建，等待材料进入。", "Project created; waiting for materials.")
+    return i18n.ui_text("还没有活动项目。创建或恢复项目后，世界线会在这里展开。", "No active project yet. Create or restore a project to unfold worldlines here.")
 
 
 def _top_signals(vm: WorkbenchViewModel) -> list[str]:
@@ -362,7 +393,11 @@ def _top_signals(vm: WorkbenchViewModel) -> list[str]:
         signals = list(branch.support_signals[:2]) + list(branch.failure_signals[:1])
         if signals:
             return [_shorten(signal, 90) for signal in signals]
-    return ["创建项目", "导入材料", "生成初始世界与平行分支"]
+    return [
+        i18n.ui_text("创建项目", "Create project"),
+        i18n.ui_text("导入材料", "Import materials"),
+        i18n.ui_text("生成初始世界与平行分支", "Generate base world and parallel branches"),
+    ]
 
 
 def _evidence_density(vm: WorkbenchViewModel) -> str:
@@ -376,11 +411,17 @@ def _evidence_density(vm: WorkbenchViewModel) -> str:
 
 
 def _stage_label(vm: WorkbenchViewModel) -> str:
-    return _STAGE_LABELS.get(vm.stage, str(vm.stage.value))
+    return _stage_label_for(vm.stage)
 
 
 def _action_label(action: str) -> str:
-    return _ACTION_LABELS.get(action, action)
+    label = _ACTION_LABELS.get(action)
+    return i18n.ui_text(label[0], label[1]) if label else action
+
+
+def _stage_label_for(stage: WorkbenchStage) -> str:
+    label = _STAGE_LABELS.get(stage)
+    return i18n.ui_text(label[0], label[1]) if label else str(stage.value)
 
 
 def _stage_index(stage: WorkbenchStage) -> int:

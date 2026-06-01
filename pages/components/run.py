@@ -16,6 +16,7 @@ from engine.utils import get_case_path, save_json
 from engine.simulation_runner import SimulationRunner
 from engine.actor_generator import generate_actors_for_branches
 from engine.world_profiler import profile_worlds
+from pages import i18n
 from pages.state_manager import state
 from pages.workbench_visuals import render_agent_cards, render_event_timeline
 from pages.workbench_state import WorkbenchViewModel
@@ -45,34 +46,34 @@ def render_simulation_console_tab(vm: WorkbenchViewModel) -> None:
     branches = state.branches or []
 
     if not case_config or not base_world or not branches:
-        st.info('💡 请先完成"设定与分歧设计"并锁定平行分支。')
+        st.info(i18n.ui_text('💡 请先完成"设定与分歧设计"并锁定平行分支。', '💡 Complete setup/divergence design and lock parallel branches first.'))
         return
 
     from pages.workbench_visuals import render_world_map, render_branch_lanes
 
     # 中央舞台抬头：智能体推演是 demo 的视觉主角
-    st.markdown("### 🎭 智能体推演舞台")
-    st.caption("多智能体在每条世界线上逐步行动；下方时间线会按时间步揭示它们的决策。")
+    st.markdown(i18n.ui_text("### 🎭 智能体推演舞台", "### 🎭 Agent Simulation Stage"))
+    st.caption(i18n.ui_text("多智能体在每条世界线上逐步行动；下方时间线会按时间步揭示它们的决策。", "Multiple agents act step by step on each worldline; the timeline below reveals their decisions by time step."))
 
     render_world_map(vm)
 
-    st.markdown("#### 🚀 推演控制台")
+    st.markdown(i18n.ui_text("#### 🚀 推演控制台", "#### 🚀 Simulation Console"))
     col_btn1, col_btn2, col_btn3 = st.columns([2, 1, 1])
     with col_btn1:
-        if st.button('⏩ 一键运行所有分支', type="primary", use_container_width=True):
+        if st.button(i18n.ui_text('⏩ 一键运行所有分支', '⏩ Run all branches'), type="primary", use_container_width=True):
             st.session_state.trigger_manual_run = True
     with col_btn2:
-        if st.button('🎯 对比并生成预测卡', disabled=not bool(vm.timeline), use_container_width=True):
-            st.info('请前往"分支比对"阶段')
+        if st.button(i18n.ui_text('🎯 对比并生成预测卡', '🎯 Compare and generate forecast cards'), disabled=not bool(vm.timeline), use_container_width=True):
+            st.info(i18n.ui_text('请前往"分支比对"阶段', 'Go to the Branch Comparison stage.'))
     with col_btn3:
-        if st.button('🧹 重置记录', disabled=not bool(vm.timeline), use_container_width=True):
+        if st.button(i18n.ui_text('🧹 重置记录', '🧹 Reset logs'), disabled=not bool(vm.timeline), use_container_width=True):
             logs = state.simulation_logs or {}
             for b in branches:
                 logs[b.branch_id] = []
             state.simulation_logs = logs
             if case_config:
                 save_json(logs, get_case_path(case_config.case_id, "05_simulation_log.json"))
-            st.success("推演进度已重置。")
+            st.success(i18n.ui_text("推演进度已重置。", "Simulation progress reset."))
             st.rerun()
 
     # 在控制台下方显示推演进度面板（运行时实时刷新）
@@ -87,11 +88,11 @@ def render_simulation_console_tab(vm: WorkbenchViewModel) -> None:
     # 中央主区：逐步事件时间线（戏份主角）占据宽列，智能体阵列在侧
     stage_col, agent_col = st.columns([1.7, 1])
     with stage_col:
-        st.markdown("#### 🔄 逐步事件时间线")
+        st.markdown(i18n.ui_text("#### 🔄 逐步事件时间线", "#### 🔄 Step-by-step Event Timeline"))
         fragment_event_timeline(vm)
         render_branch_lanes(vm.branches)
     with agent_col:
-        st.markdown("#### 🤖 参演智能体")
+        st.markdown(i18n.ui_text("#### 🤖 参演智能体", "#### 🤖 Participating Agents"))
         fragment_agent_cards(vm)
 
 
@@ -108,7 +109,7 @@ def _run_all_branch_simulations() -> None:
     base_world = state.base_world
     branches = state.branches or []
     if not case_config or not base_world or not branches:
-        st.warning("需要先完成项目、初始世界和分支世界。")
+        st.warning(i18n.ui_text("需要先完成项目、初始世界和分支世界。", "Complete the project, base world, and branch worlds first."))
         return
 
     profiles, actors_by_branch = _ensure_profiles_and_actors(case_config, base_world, branches)
@@ -119,7 +120,10 @@ def _run_all_branch_simulations() -> None:
     done_steps = 0
 
     # 顶层进度容器
-    overall_progress = st.progress(0, text="推演进度：0 / " + str(total_steps) + " 步")
+    overall_progress = st.progress(
+        0,
+        text=i18n.format_text("推演进度：0 / {total} 步", "Simulation progress: 0 / {total} steps", total=total_steps),
+    )
     log_area = st.container()
 
     for branch in branches:
@@ -132,21 +136,34 @@ def _run_all_branch_simulations() -> None:
         if not remaining:
             done_steps += len(time_steps)
             frac = min(done_steps / max(total_steps, 1), 1.0)
-            overall_progress.progress(frac, text=f"推演进度：{done_steps} / {total_steps} 步")
+            overall_progress.progress(
+                frac,
+                text=i18n.format_text(
+                    "推演进度：{done} / {total} 步",
+                    "Simulation progress: {done} / {total} steps",
+                    done=done_steps,
+                    total=total_steps,
+                ),
+            )
             with log_area:
-                st.success(f"✅ 【{branch.branch_name}】已推演完毕，跳过。")
+                st.success(i18n.format_text("✅ 【{branch}】已推演完毕，跳过。", "✅ {branch} is already complete; skipped.", branch=branch.branch_name))
             continue
 
         profile_by_branch = {p.branch_id: p for p in profiles}
 
         with st.status(
-            f"🌐 推演分支：{branch.branch_name}",
+            i18n.format_text("🌐 推演分支：{branch}", "🌐 Simulating branch: {branch}", branch=branch.branch_name),
             expanded=True,
         ) as status_box:
             step_log = list(existing)
             for time_label in remaining:
                 status_box.update(
-                    label=f"🌐 【{branch.branch_name}】 → {time_label} 智能体决策中…",
+                    label=i18n.format_text(
+                        "🌐 【{branch}】 → {time_label} 智能体决策中…",
+                        "🌐 {branch} → {time_label}: agents deciding...",
+                        branch=branch.branch_name,
+                        time_label=time_label,
+                    ),
                     state="running",
                 )
                 try:
@@ -160,17 +177,28 @@ def _run_all_branch_simulations() -> None:
                     )
                 except Exception as exc:
                     status_box.update(
-                        label=f"❌ 【{branch.branch_name}】{time_label} 推演失败",
+                        label=i18n.format_text(
+                            "❌ 【{branch}】{time_label} 推演失败",
+                            "❌ {branch} {time_label} simulation failed",
+                            branch=branch.branch_name,
+                            time_label=time_label,
+                        ),
                         state="error",
                     )
-                    st.error(f"推演错误：{exc}")
+                    st.error(i18n.format_text("推演错误：{error}", "Simulation error: {error}", error=exc))
                     break
 
                 step_log.append(new_step)
                 done_steps += 1
                 frac = min(done_steps / max(total_steps, 1), 1.0)
                 overall_progress.progress(
-                    frac, text=f"推演进度：{done_steps} / {total_steps} 步"
+                    frac,
+                    text=i18n.format_text(
+                        "推演进度：{done} / {total} 步",
+                        "Simulation progress: {done} / {total} steps",
+                        done=done_steps,
+                        total=total_steps,
+                    ),
                 )
 
                 # 实时写入 state，让其他面板也能感知到进度
@@ -184,7 +212,7 @@ def _run_all_branch_simulations() -> None:
 
             if len(step_log) >= len(time_steps):
                 status_box.update(
-                    label=f"✅ 【{branch.branch_name}】推演完成",
+                    label=i18n.format_text("✅ 【{branch}】推演完成", "✅ {branch} simulation complete", branch=branch.branch_name),
                     state="complete",
                 )
             logs[branch_id] = step_log
@@ -192,8 +220,8 @@ def _run_all_branch_simulations() -> None:
 
     # 全部完成后持久化
     save_json(logs, get_case_path(case_config.case_id, "05_simulation_log.json"))
-    overall_progress.progress(1.0, text=f"✅ 全部推演完成，共 {total_steps} 步")
-    st.success("🎉 全部世界线推演处理完成！")
+    overall_progress.progress(1.0, text=i18n.format_text("✅ 全部推演完成，共 {total} 步", "✅ All simulations complete: {total} steps", total=total_steps))
+    st.success(i18n.ui_text("🎉 全部世界线推演处理完成！", "🎉 All worldline simulations are complete."))
 
 
 # ---------------------------------------------------------------------------
@@ -207,15 +235,15 @@ def _ensure_profiles_and_actors(
 ) -> tuple[list[WorldProfile], dict[str, Any]]:
     profiles = state.profiles or []
     if not profiles:
-        with st.status("🧠 分析世界画像…", expanded=False) as s:
+        with st.status(i18n.ui_text("🧠 分析世界画像…", "🧠 Profiling worlds..."), expanded=False) as s:
             profiles = profile_worlds(branches, base_world, case_config, state.llm_client)
             state.profiles = profiles
-            s.update(label="✅ 世界画像完成", state="complete")
+            s.update(label=i18n.ui_text("✅ 世界画像完成", "✅ World profiles complete"), state="complete")
 
     actors_by_branch = state.actors_by_branch or {}
     missing_actor_branch = any(not actors_by_branch.get(b.branch_id) for b in branches)
     if missing_actor_branch:
-        with st.status("🤖 生成智能体阵列…", expanded=False) as s:
+        with st.status(i18n.ui_text("🤖 生成智能体阵列…", "🤖 Generating agent array..."), expanded=False) as s:
             actors_by_branch = generate_actors_for_branches(
                 branches,
                 base_world,
@@ -223,7 +251,7 @@ def _ensure_profiles_and_actors(
                 state.llm_client,
             )
             state.actors_by_branch = actors_by_branch
-            s.update(label="✅ 智能体就绪", state="complete")
+            s.update(label=i18n.ui_text("✅ 智能体就绪", "✅ Agents ready"), state="complete")
 
     return profiles, actors_by_branch
 
@@ -234,7 +262,7 @@ def _ensure_profiles_and_actors(
 
 def _get_active_branch(branches: list[BranchWorld]) -> BranchWorld:
     if not branches:
-        raise ValueError("没有可运行的世界线。")
+        raise ValueError(i18n.ui_text("没有可运行的世界线。", "No runnable worldline."))
     branch_names = [branch.branch_name for branch in branches]
     selected = state.sim_active_branch
     if selected not in branch_names:

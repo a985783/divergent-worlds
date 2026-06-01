@@ -1,5 +1,7 @@
 # 平行世界推演台 (Divergent Worlds)
 
+中文 | [English](README.en.md)
+
 > 把一个现实问题分叉成多个平行未来，给每个未来写下**可证伪的预注册预测**，再用现实反馈追踪——我们正在走向哪一个世界。
 
 平行世界推演台不是又一个「AI 预测引擎」，也不是一次性的 AI 报告生成器。它的立场很简单：**我们不预测「唯一的未来」，而是生成多个可能的未来，把每一个都变得具体、可证伪，然后让现实来裁决。**
@@ -49,6 +51,7 @@ engine/                   核心引擎模块
   └── report_generator.py Markdown 与 JSON 报告生成 (FR-12)
 pages/                    Streamlit 页面，对应五幕推演工作流
 prompts/                  9 个结构化模型提示词模板
+prompts/en/               9 个英文结构化模型提示词模板
 tests/                    自动化单元与集成测试包
 ```
 
@@ -82,6 +85,8 @@ LLM_LIVE_ENABLED=true
 LLM_BASE_URL=https://api.openai.com/v1   # 或其他服务商网关
 LLM_API_KEY=your_real_api_key_here
 LLM_MODEL=gpt-4o-mini
+APP_LANGUAGE=zh
+LLM_OUTPUT_LANGUAGE=zh
 DATA_DIR=data
 ```
 

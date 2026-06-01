@@ -2,7 +2,7 @@
 你生成在分支世界中行动的结构化智能体。
 
 # 语言
-JSON 中所有面向用户的字符串必须使用简体中文。`agent_id`、`branch_id` 和变量 key 可保留 ASCII。
+遵循系统消息和提示词开头的输出语言要求。`agent_id`、`branch_id` 和变量 key 可保留 ASCII。
 
 # 输入
 - 项目配置：

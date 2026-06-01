@@ -5,6 +5,7 @@ from html import escape
 from typing import Any
 
 import streamlit as st
+from pages import i18n
 from pages.state_manager import state
 
 from engine.llm_client import LLMCallError
@@ -389,7 +390,7 @@ def workflow_completion(session_state: Any) -> list[bool]:
 
 def render_chip_row(items: list[str], *, tone: str = "neutral") -> None:
     if not items:
-        st.caption("暂无")
+        st.caption(i18n.ui_text("暂无", "None yet"))
         return
     class_name = "dw-chip"
     if tone == "good":
@@ -404,7 +405,7 @@ def render_list_panel(title: str, items: list[str], *, empty: str = "暂无") ->
     with st.container(border=True):
         st.markdown(f"**{title}**")
         if not items:
-            st.caption(empty)
+            st.caption(i18n.ui_text(empty, "None yet") if empty == "暂无" else empty)
             return
         for item in items:
             st.markdown(f"- {item}")
@@ -444,12 +445,17 @@ def _next_work_page_index(session_state: Any) -> int | None:
 def llm_is_ready(llm_client: Any | None) -> tuple[bool, list[str]]:
     blockers: list[str] = []
     if llm_client is None:
-        return False, ["模型客户端初始化失败，请检查环境变量格式。"]
+        return False, [
+            i18n.ui_text(
+                "模型客户端初始化失败，请检查环境变量格式。",
+                "Model client initialization failed. Check environment variable format.",
+            )
+        ]
 
     if not getattr(llm_client, "live_enabled", False):
-        blockers.append("需要设置 LLM_LIVE_ENABLED=true。")
+        blockers.append(i18n.ui_text("需要设置 LLM_LIVE_ENABLED=true。", "Set LLM_LIVE_ENABLED=true."))
     if not getattr(llm_client, "api_key", None):
-        blockers.append("需要设置 LLM_API_KEY。")
+        blockers.append(i18n.ui_text("需要设置 LLM_API_KEY。", "Set LLM_API_KEY."))
 
     return not blockers, blockers
 
@@ -457,16 +463,21 @@ def llm_is_ready(llm_client: Any | None) -> tuple[bool, list[str]]:
 def render_llm_warning_panel(llm_client: Any | None, init_error: str | None = None) -> None:
     _, blockers = llm_is_ready(llm_client)
 
-    with st.expander("隐私 / API 密钥 / 调用状态", expanded=False):
+    with st.expander(i18n.ui_text("隐私 / API 密钥 / 调用状态", "Privacy / API key / Call status"), expanded=False):
         st.warning(
-            "隐私提醒：点击模型调用步骤后，当前项目材料、问题、"
-            "分支和推演上下文会发送到你配置的兼容 OpenAI 格式的模型服务；"
-            "不要上传密钥、"
-            "身份证件、客户隐私或其他敏感原文。"
+            i18n.ui_text(
+                "隐私提醒：点击模型调用步骤后，当前项目材料、问题、"
+                "分支和推演上下文会发送到你配置的兼容 OpenAI 格式的模型服务；"
+                "不要上传密钥、"
+                "身份证件、客户隐私或其他敏感原文。",
+                "Privacy reminder: when you run model-backed steps, project materials, questions, "
+                "branches, and simulation context are sent to your configured OpenAI-compatible model service. "
+                "Do not upload secrets, identity documents, customer privacy, or sensitive raw text.",
+            )
         )
 
         if init_error:
-            st.error(f"模型客户端初始化失败：{init_error}")
+            st.error(i18n.format_text("模型客户端初始化失败：{error}", "Model client initialization failed: {error}", error=init_error))
 
         if llm_client is None:
             return
@@ -475,28 +486,37 @@ def render_llm_warning_panel(llm_client: Any | None, init_error: str | None = No
         estimated_usd = float(getattr(llm_client, "_estimated_usd", 0.0))
 
         col1, col2, col3 = st.columns(3)
-        col1.metric("真实模型", "已启用" if llm_client.live_enabled else "未启用")
-        col2.metric("API 密钥", "已配置" if llm_client.api_key else "缺失")
-        col3.metric("模型", llm_client.model)
+        col1.metric(
+            i18n.ui_text("真实模型", "Live model"),
+            i18n.ui_text("已启用", "Enabled") if llm_client.live_enabled else i18n.ui_text("未启用", "Disabled"),
+        )
+        col2.metric(
+            i18n.ui_text("API 密钥", "API key"),
+            i18n.ui_text("已配置", "Configured") if llm_client.api_key else i18n.ui_text("缺失", "Missing"),
+        )
+        col3.metric(i18n.ui_text("模型", "Model"), llm_client.model)
 
         st.caption(
-            "本次会话用量："
-            f"调用 {usage['calls']} 次 · "
-            f"输入 {usage['input_tokens']} · "
-            f"输出 {usage['output_tokens']} · "
-            f"预估 ${estimated_usd:.4f}"
+            i18n.format_text(
+                "本次会话用量：调用 {calls} 次 · 输入 {input_tokens} · 输出 {output_tokens} · 预估 ${usd:.4f}",
+                "Session usage: {calls} calls · input {input_tokens} · output {output_tokens} · estimated ${usd:.4f}",
+                calls=usage["calls"],
+                input_tokens=usage["input_tokens"],
+                output_tokens=usage["output_tokens"],
+                usd=estimated_usd,
+            )
         )
 
         if blockers:
-            st.error("LLM 步骤当前会被阻止：" + " ".join(blockers))
+            st.error(i18n.ui_text("LLM 步骤当前会被阻止：", "LLM steps are currently blocked: ") + " ".join(blockers))
         else:
-            st.success("LLM 配置可用。")
+            st.success(i18n.ui_text("LLM 配置可用。", "LLM configuration is ready."))
 
 
 def render_sidebar_llm_status(llm_client: Any | None) -> None:
     ready, blockers = llm_is_ready(llm_client)
-    status = "可用" if ready else "受阻"
-    st.sidebar.caption(f"模型状态：{status}")
+    status = i18n.ui_text("可用", "available") if ready else i18n.ui_text("受阻", "blocked")
+    st.sidebar.caption(i18n.format_text("模型状态：{status}", "Model status: {status}", status=status))
     if blockers:
         st.sidebar.warning(blockers[0])
 
@@ -505,7 +525,13 @@ def render_sidebar_llm_status(llm_client: Any | None) -> None:
 
     usage = llm_client.get_usage()
     st.sidebar.caption(
-        f"模型调用：{usage['calls']} 次 | 输入 {usage['input_tokens']} / 输出 {usage['output_tokens']}"
+        i18n.format_text(
+            "模型调用：{calls} 次 | 输入 {input_tokens} / 输出 {output_tokens}",
+            "Model calls: {calls} | input {input_tokens} / output {output_tokens}",
+            calls=usage["calls"],
+            input_tokens=usage["input_tokens"],
+            output_tokens=usage["output_tokens"],
+        )
     )
 
 
@@ -529,7 +555,12 @@ def run_llm_action(
         state.set_dynamic(retry_key, False)
 
     if show_notice:
-        st.caption("该步骤会调用外部模型；请确认材料中没有敏感原文。")
+        st.caption(
+            i18n.ui_text(
+                "该步骤会调用外部模型；请确认材料中没有敏感原文。",
+                "This step calls an external model; make sure materials contain no sensitive raw text.",
+            )
+        )
     button_width = "stretch" if use_container_width else "content"
     clicked = st.button(label, type=button_type, disabled=disabled, width=button_width)
     should_run = clicked or retry_requested
@@ -539,7 +570,7 @@ def run_llm_action(
         return False
 
     if disabled:
-        st.warning(disabled_reason or "当前状态下不能运行该步骤。")
+        st.warning(disabled_reason or i18n.ui_text("当前状态下不能运行该步骤。", "This step cannot run in the current state."))
         _render_retry_controls(action_key, label)
         return False
 
@@ -548,9 +579,11 @@ def run_llm_action(
     if not ready:
         _store_action_error(
             action_key,
-            "LLM 配置未就绪：" + " ".join(blockers),
-            "更新 .env 或环境变量后，在侧边栏点击“重新读取 LLM 配置”，"
-            "再重试。",
+            i18n.ui_text("LLM 配置未就绪：", "LLM configuration is not ready: ") + " ".join(blockers),
+            i18n.ui_text(
+                "更新 .env 或环境变量后，在侧边栏点击“重新读取 LLM 配置”，再重试。",
+                "After updating .env or environment variables, click Reload LLM settings in the sidebar and retry.",
+            ),
         )
         _render_retry_controls(action_key, label)
         return False
@@ -571,7 +604,7 @@ def run_llm_action(
         _store_action_error(
             action_key,
             str(exc),
-            "修正输入或配置后可以重试该步骤。",
+            i18n.ui_text("修正输入或配置后可以重试该步骤。", "Fix the input or configuration, then retry this step."),
         )
         _render_retry_controls(action_key, label)
         return False
@@ -593,16 +626,23 @@ def run_act_action(
 def _llm_recovery_hint(message: str) -> str:
     if "LLM_API_KEY" in message:
         return (
-            "设置 LLM_API_KEY 后，在侧边栏点击“重新读取 LLM 配置”，"
-            "再重试。"
+            i18n.ui_text(
+                "设置 LLM_API_KEY 后，在侧边栏点击“重新读取 LLM 配置”，再重试。",
+                "Set LLM_API_KEY, click Reload LLM settings in the sidebar, then retry.",
+            )
         )
     if "LLM_LIVE_ENABLED" in message:
         return (
-            "设置 LLM_LIVE_ENABLED=true 后，"
-            "在侧边栏点击“重新读取 LLM 配置”，再重试。"
+            i18n.ui_text(
+                "设置 LLM_LIVE_ENABLED=true 后，在侧边栏点击“重新读取 LLM 配置”，再重试。",
+                "Set LLM_LIVE_ENABLED=true, click Reload LLM settings in the sidebar, then retry.",
+            )
         )
     return (
-        "检查模型服务、网络、结构化输出或输入材料后，可以重试该步骤。"
+        i18n.ui_text(
+            "检查模型服务、网络、结构化输出或输入材料后，可以重试该步骤。",
+            "Check the model service, network, structured output, or input materials, then retry.",
+        )
     )
 
 
@@ -619,14 +659,14 @@ def _render_retry_controls(action_key: str, label: str) -> None:
     if not error:
         return
 
-    st.error(f"{label} 失败：{error['message']}")
+    st.error(i18n.format_text("{label} 失败：{message}", "{label} failed: {message}", label=label, message=error["message"]))
     st.caption(error["hint"])
     col1, col2 = st.columns([1, 1])
     with col1:
-        if st.button("重试该步骤", key=f"{action_key}_retry", type="primary"):
+        if st.button(i18n.ui_text("重试该步骤", "Retry this step"), key=f"{action_key}_retry", type="primary"):
             state.set_dynamic(f"{action_key}_retry_requested", True)
             st.rerun()
     with col2:
-        if st.button("清除错误", key=f"{action_key}_clear"):
+        if st.button(i18n.ui_text("清除错误", "Clear error"), key=f"{action_key}_clear"):
             _clear_action_error(action_key)
             st.rerun()

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import Any, Callable
 
+from engine.language import json_output_instruction
 from engine.schemas import Actor, BaseWorld, BranchWorld, CaseConfig, SimulationStep, WorldProfile
 from engine.utils import (
     get_case_path,
@@ -53,7 +54,7 @@ class SimulationRunner:
                 [
                     {
                         "role": "system",
-                        "content": "只推进一个分支的一个时间步；只返回合法 SimulationStep JSON；所有面向用户的字符串字段使用简体中文。",
+                        "content": json_output_instruction("SimulationStep"),
                     },
                     {"role": "user", "content": prompt},
                 ],

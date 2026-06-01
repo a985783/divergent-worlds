@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import Any
 
+from engine.language import json_output_instruction
 from engine.schemas import BaseWorld, BranchWorld, CaseConfig, WorldProfile
 from engine.utils import (
     get_case_path,
@@ -21,7 +22,7 @@ def profile_world(branch: BranchWorld, base_world: BaseWorld, llm_client: Any) -
             [
                 {
                     "role": "system",
-                    "content": "只返回一个合法 WorldProfile JSON 对象；所有面向用户的字符串字段使用简体中文。",
+                    "content": json_output_instruction("WorldProfile"),
                 },
                 {"role": "user", "content": prompt},
             ],

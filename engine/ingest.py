@@ -6,6 +6,7 @@ from pathlib import Path
 from statistics import mean
 from typing import Any
 
+from engine.language import json_output_instruction
 from engine.schemas import CaseConfig, MaterialSummary
 from engine.utils import (
     get_case_path,
@@ -217,7 +218,7 @@ def summarize_materials(
             [
                 {
                     "role": "system",
-                    "content": "只返回合法 MaterialSummary JSON；所有面向用户的字符串字段使用简体中文。",
+                    "content": json_output_instruction("MaterialSummary"),
                 },
                 {"role": "user", "content": user_prompt},
             ],
